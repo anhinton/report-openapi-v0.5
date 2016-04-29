@@ -1,0 +1,522 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+
+<html>
+  <head>
+<style type="text/css">
+.knitr .inline {
+  background-color: #f7f7f7;
+  border:solid 1px #B0B0B0;
+}
+.error {
+	font-weight: bold;
+	color: #FF0000;
+}
+.warning {
+	font-weight: bold;
+}
+.message {
+	font-style: italic;
+}
+.source, .output, .warning, .error, .message {
+	padding: 0 1em;
+  border:solid 1px #F7F7F7;
+}
+.source {
+  background-color: #f5f5f5;
+}
+.rimage .left {
+  text-align: left;
+}
+.rimage .right {
+  text-align: right;
+}
+.rimage .center {
+  text-align: center;
+}
+.hl.num {
+  color: #AF0F91;
+}
+.hl.str {
+  color: #317ECC;
+}
+.hl.com {
+  color: #AD95AF;
+  font-style: italic;
+}
+.hl.opt {
+  color: #000000;
+}
+.hl.std {
+  color: #585858;
+}
+.hl.kwa {
+  color: #295F94;
+  font-weight: bold;
+}
+.hl.kwb {
+  color: #B05A65;
+}
+.hl.kwc {
+  color: #55aa55;
+}
+.hl.kwd {
+  color: #BC5A65;
+  font-weight: bold;
+}
+</style>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>OpenAPI version 0.5</title>
+    <meta name="author" content="Ashley Noel Hinton">
+    <meta name="description" content="Technical report on version 0.5 of the OpenAPI architecture">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="stylesheet.css">
+  </head>
+
+  <body>
+    <h1>OpenAPI version 0.5</h1>
+
+    <div class="author">
+      Ashley Noel Hinton<br>
+      <span class="author-email">
+	<a href="ahin017@aucklanduni.ac.nz">ahin017@aucklanduni.ac.nz</a>
+      </span><br>
+      <span class="affiliation">Department of Statistics, University
+      of Auckland</span>
+    </div>
+
+
+
+    <div id="introduction">
+      <p>The OpenAPI architecture is designed to help people connect
+      with data. The architecture specifies an XML schema for wrapping
+      pieces of data analysis code in modules, and combining modules
+      in pipelines. The architecture also specifies the requirements
+      of OpenAPI glue systems&mdash;software which can interpret and
+      execute modules and pipelines
+      (<a href="http://stattech.wordpress.fos.auckland.ac.nz/2015-01-introducing-openapi/">Introducing
+      OpenAPI</a>). This report describes the changes to the OpenAPI
+      architecture implemented in version 0.5.</p>
+
+      <p>Version 0.3 of OpenAPI introduced a host attribute to the
+      module specification as a method for guaranteeing that module
+      source script requirements would be met
+      (<a href="http://stattech.wordpress.fos.auckland.ac.nz/2016-01-openapi-version-0-3/">OpenAPI
+      version 0.3</a>). This report describes how the module host
+      attribute has been replaced with <code>host</code> elements in
+      version 0.5. This implementation permits more control over the
+      host types supported. This report describes
+      how <code>vagrant</code> and <code>docker</code> hosts are
+      supported in version 0.5. Version 0.5 of OpenAPI also introduces
+      a persistent result format for capturing the results of
+      executing modules and pipelines.</p>
+
+      <p>The improvements described in this report have been
+      incorporated
+      into <a href="https://github.com/anhinton/conduit/releases/tag/v0.5">Conduit
+      version 0.5</a>. The Conduit package is a prototype OpenAPI glue system
+      implemented as an R package.</p>
+    </div>
+
+    <h2>Persistent result formats for modules and pipelines</h2>
+
+    <p>Version 0.5 of the OpenAPI architecture introduces a persistent
+    result format for returning the results of executing a module or a
+    pipeline. An OpenAPI result object provides any glue system with
+    persistent access to a module' or pipeline's output objects. This
+    provides a possible means for a glue system to cache module and
+    pipeline results. The result format also allows the result of
+    pipeline execution to be consumed by the glue system at a future
+    time, or for the pipeline outputs to be consumed on another glue
+    system or machine entirely.</p>
+
+    <h3>Requirements</h3>
+
+    <p>The main mechanisms for producing persistent module and
+    pipeline results are module and pipeline XML files. For a module
+    result a glue system should produce a module XML file which, on
+    execution, produces the same named output objects as the original
+    module, with the same vessel types and formats. Similarly, for a
+    pipeline a glue system should produce a pipeline XML file which,
+    on execution, produces the same named output objects as the
+    component modules in the original pipeline.</p>
+
+    <p>A glue system must be able to produce a gzipped tar archive
+    which contains the module result for each module it has
+    executed. This archive should have a single directory named for
+    the module at its top level. This directory should contain a
+    module XML file, which echoes the name of top directory. For
+    example, the result of a module named &lsquo;blockdata&rsquo;
+    should contain a directory named <code>blockdata</code> which
+    contains the file <code>blockdata.xml</code>. This directory can
+    also contain any other file resources required by the module
+    result XML to produce the module's outputs.</p>
+
+    <p>A glue system must also be able to produce a gzipped tar
+    archive which contains the pipeline result for each pipeline it
+    has executed. As with module result archives, the pipeline result
+    archive should contain at its top level a directory named for the
+    executed pipeline. This directory should contain a pipeline result
+    XML file named <code>pipeline.xml</code>. This directory can also
+    contain any other file resources required by the pipeline result
+    XML to produce its component's outputs.</p>
+
+    <p>A glue system should also be able to recover module and
+    pipeline results from the gzipped tar archives described
+    above.</p>
+
+    <h3>Recommendations</h3>
+
+    <p>A glue system should at the very least be able to recover
+    modules and pipelines from the pipeline and module result archives
+    it produces. Ideally a glue system should produce result archives
+    from which any simple glue system can recover pipeline and module
+    results. To achieve this it is recommended that pipeline and
+    module result XML files have minimal system requirements. In
+    general this means that a module or pipeline archive should
+    contain everything that is required to produce the module outputs,
+    and should invoke as little processing as possible to produce
+    these outputs.</p>
+
+    <p>One method for creating lightweight module result archives is
+    for the glue system to generate a &lsquo;dummy&rsquo; module XML
+    file, which simply names its outputs directly. For example, a
+    module might produce the following output:</p>
+
+    <pre><code>&lt;output name="birdPicture"&gt;
+  &lt;file ref="birdpicture.pdf"/&gt;
+  &lt;format formatType="text"&gt;PDF file&lt;/format&gt;
+&lt;/output&gt;</code></pre>
+
+    <p>The file produced by this module output could be included in
+    the module result archive alongside to module result XML file. The
+    module result XML could produce this file output by including the
+    output XML above.</p>
+
+    <p>This technique can also be used for URL vessel types. A module
+    might contain the following output:</p>
+
+    <pre><code>&lt;output name="episodeTable"&gt;
+  &lt;url ref="http://openapi.org/raw/episodeTable.html"/&gt;
+  &lt;format formatType="text"&gt;HTML file&lt;/format&gt;  
+&lt;/output&gt;</code></pre>
+
+    <p>The module result XML file could include this output XML
+    directly to provide this output.</p>
+
+    <p>The case of internal vessel types is not so immediately
+    straightforward to solve without some work by the glue
+    system. Consider an R-language module with the following
+    output:</p>
+
+    <pre><code>&lt;output name="suburbs"&gt;
+  &lt;internal symbol="suburbNames"/&gt;
+  &lt;format formatType="text"&gt;R list&lt;/format&gt;  
+&lt;/output&gt;</code></pre>
+
+    <p>While a glue system will have a built-in method for passing
+    internal outputs to the inputs of subsequent modules in normal
+    operation, there is no guarantee that the glue system which
+    recovers a module result will use the same mechanism. In this case
+    the glue system must act as a module <em>author</em> and write a
+    module source script which produces an internal language object to
+    be named as an output. For example, a glue system could serialize
+    the output named above to a file
+    called <code>suburbNames.rds</code> with the R
+    function <code>saveRDS()</code>. This file could be placed in the
+    module result archive alongside the module result XML file. The
+    glue system could wrap the following source script in the module
+    result XML:</p>
+
+    <pre><code>suburbNames &lt;- readRDS("suburbNames.rds")</code></pre>
+
+    <p>The module result XML can now name this output using the same
+    output code as above, as this internal object will now be created
+    upon execution of the module result.</p>
+
+    <p>Where a module names
+    a <a href="#running-modules-on-host-machines"><code>host</code>
+    machine</a> for execution of its source scripts it is recommended
+    that the subsequent module result should <em>not</em> require use
+    of a host to produce its outputs. This should improve the
+    portability and &lsquo;weight&rsquo; of the result archive.</p>
+
+    <h3>Implementation in Conduit v0.5</h3>
+
+    <p>The following examples demonstrate how persistent pipeline and
+    module results have been implemented in
+    <a href="https://github.com/anhinton/conduit/releases/tag/v0.5">Conduit
+    v0.5</a>.</p>
+
+    <p>The result of executing a module is a <code>moduleResult</code>
+    object:</p>
+
+<div class="chunk" id="moduleResult"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">mod1</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">loadModule</span><span class="hl std">(</span><span class="hl kwc">name</span> <span class="hl std">=</span> <span class="hl str">&quot;mod1&quot;</span><span class="hl std">,</span>
+                   <span class="hl kwc">ref</span> <span class="hl std">=</span> <span class="hl kwd">system.file</span><span class="hl std">(</span><span class="hl str">&quot;extdata&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;test_pipeline&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;module1.xml&quot;</span><span class="hl std">,</span>
+                                     <span class="hl kwc">package</span> <span class="hl std">=</span> <span class="hl str">&quot;conduit&quot;</span><span class="hl std">))</span>
+<span class="hl std">modRes1</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">runModule</span><span class="hl std">(mod1)</span>
+<span class="hl kwd">class</span><span class="hl std">(modRes1)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] &quot;moduleResult&quot;    &quot;componentResult&quot;
+</pre></div>
+</div></div>
+
+    <p>A <code>moduleResult</code> object can be exported to a module
+    result tar archive using the <code>export()</code> function:</p>
+    
+<div class="chunk" id="modResultExport"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">modExport1</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">export</span><span class="hl std">(modRes1)</span>
+<span class="hl kwd">basename</span><span class="hl std">(modExport1)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] &quot;mod1.tar.gz&quot;
+</pre></div>
+</div></div>
+
+    <p>The resulting tar
+    archive&mdash;<a href="mod1.tar.gz">mod1.tar.gz</a>&mdash;contains the
+    module result XML file (mod1.xml) and the files it requires to
+    reproduce the module outputs:</p>
+    
+<div class="chunk" id="modTarContents"><div class="rcode"><div class="output"><pre class="knitr r">## [1] &quot;mod1/mod1.xml&quot; &quot;mod1/script.R&quot; &quot;mod1/x.rds&quot;
+</pre></div>
+</div></div>
+
+    <p>Exported module result archives can be recovered using
+    the <code>importModule()</code> function:</p>
+
+<div class="chunk" id="recoverModuleResult"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">recoveredMod1</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">importModule</span><span class="hl std">(</span><span class="hl kwc">tarfile</span> <span class="hl std">= modExport1,</span> <span class="hl kwc">name</span> <span class="hl std">=</span> <span class="hl str">&quot;recoveredMod1&quot;</span><span class="hl std">)</span>
+<span class="hl kwd">class</span><span class="hl std">(recoveredMod1)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] &quot;module&quot;
+</pre></div>
+</div></div>
+
+    <p>The result of running a pipeline is
+    a <code>pipelineResult</code> object:</p>
+
+<div class="chunk" id="pipelineResult"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">pipeline1</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">loadPipeline</span><span class="hl std">(</span>
+    <span class="hl kwc">name</span> <span class="hl std">=</span> <span class="hl str">&quot;pipeline1&quot;</span><span class="hl std">,</span>
+    <span class="hl kwc">ref</span> <span class="hl std">=</span> <span class="hl kwd">system.file</span><span class="hl std">(</span><span class="hl str">&quot;extdata&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;test_pipeline&quot;</span><span class="hl std">,</span> <span class="hl str">&quot;pipeline.xml&quot;</span><span class="hl std">,</span>
+                      <span class="hl kwc">package</span> <span class="hl std">=</span> <span class="hl str">&quot;conduit&quot;</span><span class="hl std">))</span>
+<span class="hl std">pipelineRes1</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">runPipeline</span><span class="hl std">(pipeline1)</span>
+<span class="hl kwd">class</span><span class="hl std">(pipelineRes1)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] &quot;pipelineResult&quot;  &quot;componentResult&quot;
+</pre></div>
+</div></div>
+
+    <p>A <code>moduleResult</code> object can be exported to a
+    pipeline result tar archive using the <code>export()</code>
+    function:</p>
+
+<div class="chunk" id="pipelineResultExport"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">pplExport1</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">export</span><span class="hl std">(pipelineRes1)</span>
+<span class="hl kwd">basename</span><span class="hl std">(pplExport1)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] &quot;pipeline1.tar.gz&quot;
+</pre></div>
+</div></div>
+
+    <p>The resulting tar
+    archive&mdash;<a href="pipeline1.tar.gz">pipeline1.tar.gz</a>&mdash;contains
+    the pipeline result XML file (pipeline.xml) and the files it
+    requires to reproduce the pipeline outputs:</p>
+
+<div class="chunk" id="pplTarContents"><div class="rcode"><div class="output"><pre class="knitr r">##  [1] &quot;pipeline1/module1/&quot;            &quot;pipeline1/module1/module1.xml&quot;
+##  [3] &quot;pipeline1/module1/script.R&quot;    &quot;pipeline1/module1/x.rds&quot;      
+##  [5] &quot;pipeline1/module2/&quot;            &quot;pipeline1/module2/module2.xml&quot;
+##  [7] &quot;pipeline1/module2/numbers.rds&quot; &quot;pipeline1/module2/Rplots.pdf&quot; 
+##  [9] &quot;pipeline1/module2/script.R&quot;    &quot;pipeline1/pipeline.xml&quot;
+</pre></div>
+</div></div>
+
+    <p>Exported pipeline result archives can be recovered using
+    the <code>importPipeline()</code> function:</p>
+
+<div class="chunk" id="recoverPipelineResult"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">recoveredPpl1</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">importPipeline</span><span class="hl std">(</span><span class="hl kwc">tarfile</span> <span class="hl std">= pplExport1,</span> <span class="hl kwc">name</span> <span class="hl std">=</span> <span class="hl str">&quot;recoveredPpl1&quot;</span><span class="hl std">)</span>
+<span class="hl kwd">class</span><span class="hl std">(recoveredPpl1)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## [1] &quot;pipeline&quot;
+</pre></div>
+</div></div>
+      
+    <h2 id="running-modules-on-host-machines">Running modules on host
+    machines</h2>
+
+    <p>Module hosts were introduced in OpenAPI v0.3 to provide an
+    execution environment for a module which promises to meet the
+    module source script(s)' system and version requirements
+    (<a href="https://anhinton.github.io/report-openapiv0.3/report.html#c14-module-host">'Module
+    host' in OpenAPI version 0.3</a>). A module host was a machine
+    which could be accessed using the SSH protocol. The module host
+    was specified using a host attribute, as in the following
+    example:</p>
+
+    <pre><code>&lt;module language="R" host="conduit@openapi.org:2222"&gt;
+  ...
+&lt;/module&gt;</code></pre>
+
+    <p>The use of the SSH protocol allowed a glue system to connect to
+    many types of host machines, both physical and virtual, using a
+    single interface. However, using the SSH method made the glue
+    system responsible for managing authentication with the remote
+    host, and did not allow a module author to take advantage of host
+    machine-specific authentication and execution methods.</p>
+
+    <p>In OpenAPI version 0.5 the module host attribute has been
+    replaced with <code>host</code> elements. A <code>host</code>
+    element can contain elements describing how the glue system can
+    connect to a variety of host machine types. OpenAPI v0.5
+    specifies <code>docker</code> and <code>vagrant</code> host
+    elements for a glue system to connect to a host on
+    a <a href="https://www.docker.com/">Docker</a> container and on
+    a <a href="https://www.vagrantup.com/">Vagrant</a> machine,
+    respectively.</p>
+
+    <p>The following sections provide details for specifying a host
+    for module execution using Docker and Vagrant.</p>
+
+    <h3>Docker host containers</h3>
+
+    <p>A module author can specify that a module is to be executed on
+    a Docker container host using the <code>docker</code>
+    element. This element has one required attribute,
+    &lsquo;image&rsquo;, and one optional attribute,
+    &lsquo;guestdir&rsquo;. The &lsquo;image&rsquo; attribute accepts
+    the name of
+    a <a href="https://docs.docker.com/engine/userguide/containers/dockerimages/">Docker
+    image</a> to be used for execution. The &lsquo;guestdir&rsquo;
+    attribute accepts the file path of the directory where the module
+    source scripts will be executed on the Docker container (guest
+    machine). A module author specifies a module should be executed
+    using a Docker container which uses the Docker image
+    &ldquo;rocker/r-base&rdquo; as in the following example:</p>
+    
+    <pre><code>&lt;module language="R"&gt;
+  &lt;host&gt;
+    &lt;docker image="rocker/r-base"/&gt;
+  &lt;/host&gt;
+  ...
+&lt;/module&gt;</code></pre>
+
+    <p>Support for <code>docker</code> host elements has been
+    implemented
+    in <a href="https://github.com/anhinton/conduit/releases/tag/v0.5">Conduit
+    v0.5</a>. When the &lsquo;guestdir&rsquo; is not provided, as in
+    the above example, Conduit will execute in the
+    &ldquo;/home/conduit&rdquo; directory on the Docker container. The
+    Conduit package requires that Docker be installed on the system,
+    and that the user running the R session is a member of the
+    &lsquo;docker&rsquo; group. Conduit 0.5 was tested using Docker
+    version 1.11.1. Adding a user to the &lsquo;docker&rsquo; group in
+    Ubuntu Linux is described in
+    the <a href="https://docs.docker.com/engine/installation/linux/ubuntulinux/#create-a-docker-group">Docker
+    documentation</a>.</p>
+
+    <p><strong>TODO(anhinton): provide some Conduit code demoing
+    this?</strong></p>
+
+    <h3>Vagrant host machines</h3>
+
+    <p>A module author can specify that a module is to be executed on
+    a Vagrant machine using the <code>vagrant</code>
+    element. The <code>vagrant</code> element has one required
+    attribute, &lsquo;vagrantfile&rsquo;, and two optional attributes,
+    &lsquo;guestdir&rsquo; and &lsquo;hostdir&rsquo;. The
+    &lsquo;vagrantfile&rsquo; attribute requires a file path to
+    a <a href="https://www.vagrantup.com/docs/vagrantfile/">Vagrantfile</a>
+    on the local system. The &lsquo;hostdir&rsquo; attribute let's the
+    module author name a directory on the machine running a glue
+    system (host system) which is to
+    be <a href="https://www.vagrantup.com/docs/synced-folders/">synced
+    with the Vagrant machine</a>. The &lsquo;guestdir&rsquo; attribute
+    let's the module author specify the directory on the Vagrant
+    machine (guest machine) to be synced with
+    &lsquo;hostdir&rsquo;. The following demonstrates how a module
+    author specifies a Vagrant host machine:</p>
+
+    <pre><code>&lt;module language="R"&gt;
+  &lt;host&gt;
+    &lt;vagrant vagrantfile="~/vagrant/vagrant-conduit/Vagrantfile"/&gt;
+  &lt;/host&gt;
+  ...
+&lt;/module&gt;</code></pre>
+
+    <p>In this example the module source scripts will be executed
+    using the Vagrant machine defined using the Vagrantfile found at
+    &ldquo;~/vagrant/vagrant-conduit/Vagrantfile&rdquo; on the machine
+    running a glue system.</p>
+
+    <p>Support for <code>vagrant</code> host elements has been
+    implemented
+    in <a href="https://github.com/anhinton/conduit/releases/tag/v0.5">Conduit
+    v0.5</a>. When the module author does not specify a
+    &lsquo;hostdir&rsquo; Conduit will use the directory containing
+    the specified &lsquo;vagrantfile&rsquo; as the synced folder. If
+    the author does not specify a &lsquo;guestdir&rsquo; Conduit will
+    use the &ldquo;/vagrant&rdquo; directory as the target for the
+    synced folder on the Vagrant machine (guest machine). Conduit will
+    use these defaults for the Vagrant host XML describe above.</p>
+
+    <p>The Conduit package requires that Vagrant be installed on the
+    system, and that the file named in &lsquo;vagrantfile&rsquo;
+    exists on the local filesystem. It also requires that the Vagrant
+    machine named be running when the module is executed&mdash;Conduit
+    will not start a stopped Vagrant machine. Conduit 0.5 was tested
+    using Vagrant version 1.8.1.</p>
+
+    <p><strong>TODO(anhinton): provide some Conduit code demoing
+    this?</strong></p>
+
+    <h2>Discussion</h2>
+
+    <p><strong>TODO(anhinton): discuss something</strong></p>
+
+    <h2>Technical requirements</h2>
+
+    <ul>
+      <li>The changes to OpenAPI version 0.5 described in this report
+      have been implemented in version 0.5 of
+      the <a href="https://github.com/anhinton/conduit/releases/tag/v0.5">Conduit</a>
+      package, a prototype OpenAPI glue system implemented in R.</li>
+      <li>Development and testing of Conduit v0.5 was done
+      in <a href="http://www.ubuntu.com/">Ubuntu 16.04 64-bit</a>
+      using <a href="https://www.r-project.org/">R version
+      3.2.5</a>.</li>
+      <li>Docker module hosts were tested in Conduit v0.5
+      using <a href="https://www.docker.com/">Docker Engine
+      v1.11.1</a>.</li>
+      <li>Vagrant module hosts were tested in Conduit v0.5
+      using <a href="https://vagrantup.com/">Vagrant v1.8.1</a>
+      and <a href="https://www.virtualbox.org/">VirtualBox
+      v5.0.18</a>.</li>
+    </ul>
+
+    <h2>Resources</h2>
+
+    <ul>
+      <li><a href="http://stattech.wordpress.fos.auckland.ac.nz/2015-01-introducing-openapi/">Introducing
+      OpenAPI</a> describes the original conception and design of the
+      OpenAPI architecture.</li>
+      <li>Several design changes and new features in OpenAPI are
+      documented
+      in <a href="http://stattech.wordpress.fos.auckland.ac.nz/2016-01-openapi-version-0-3/">OpenAPI
+      version 0.3</a>.</li>
+      <li>XML schema for version 0.5 of OpenAPI
+      are <a href="https://github.com/anhinton/openapiValidation/releases/tag/v0.5">available
+      on Github</a>.</li>
+      <li>This report was produced using
+      the <a href="http://yihui.name/knitr/">knitr</a> package in
+      R. The source document is available
+      at <a href="report.Rhtml">report.Rhtml</a>.</li>
+    </ul>
+      
+    <hr>
+
+    <div class="footer">
+      <p>
+	<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png"></a><br><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">OpenAPI  0.5</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Ashley Noel Hinton</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+      </p>
+    </div>
+    
+  </body>
+  
+</html>
