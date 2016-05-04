@@ -29,3 +29,5 @@ system2("tar", c("-tf", pplExport1))
 
 recoveredPpl1 <- importPipeline(tarfile = pplExport1, name = "recoveredPpl1")
 class(recoveredPpl1)
+
+## dockerHost example

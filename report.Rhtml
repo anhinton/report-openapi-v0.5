@@ -5,22 +5,30 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <title>OpenAPI version 0.5</title>
-    <meta name="author" content="Ashley Noel Hinton">
+    <meta name="author" content="Ashley Noel Hinton, Paul Murrell">
     <meta name="description" content="Technical report on version 0.5 of the OpenAPI architecture">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="stylesheet.css">
   </head>
 
   <body>
-    <h1>OpenAPI version 0.5</h1>
+    <div class="title">
+      <h1>OpenAPI version 0.5</h1>
 
-    <div class="author">
-      Ashley Noel Hinton<br>
-      <span class="author-email">
-	<a href="ahin017@aucklanduni.ac.nz">ahin017@aucklanduni.ac.nz</a>
-      </span><br>
-      <span class="affiliation">Department of Statistics, University
-      of Auckland</span>
+      <div class="author">
+	<p>Ashley Noel Hinton<br>
+	  <span class="author-email">
+	    <a href="ahin017@aucklanduni.ac.nz">ahin017@aucklanduni.ac.nz</a>
+	</span></p>
+	<p>Paul Murrell<br>
+	  <span class="author-email">
+	    <a href="paul@stat.auckland.ac.nz">paul@stat.auckland.ac.nz</a>
+	</span></p>
+	<p class="affiliation">Department of Statistics, University
+	  of Auckland</p>
+      </div>
+
+      <p class="date">4 May 2016</p>
     </div>
 
 <!-- begin.rcode setup, echo=FALSE, message=FALSE
@@ -99,11 +107,19 @@ end.rcode-->
     executed pipeline. This directory should contain a pipeline result
     XML file named <code>pipeline.xml</code>. This directory can also
     contain any other file resources required by the pipeline result
-    XML to produce its component's outputs.</p>
+    XML to produce its component's
+    outputs. Only <code>pipeline.xml</code> is required by the
+    pipeline result archive specification, but it is expected that an
+    archive will also contain the pipeline's module XML files, and the
+    files these modules require to produce their outputs. For example,
+    Conduit v0.5 includes a named directory for each module in the
+    pipeline result archive&mdash;each module directory has the same
+    structure as a module result archive.</p>
 
-    <p>A glue system should also be able to recover module and
-    pipeline results from the gzipped tar archives described
-    above.</p>
+    <p>A glue system should also be able to unpack module and pipeline
+    results from the gzipped tar archives described above. Once
+    unpacked a glue system can easily read and execute the archive's
+    module and pipeline XML files in the usual way.</p>
 
     <h3>Recommendations</h3>
 
@@ -174,12 +190,15 @@ end.rcode-->
     output code as above, as this internal object will now be created
     upon execution of the module result.</p>
 
-    <p>Where a module names
-    a <a href="#running-modules-on-host-machines"><code>host</code>
-    machine</a> for execution of its source scripts it is recommended
+    <p>Where a module names a <code>host</code> machine
+    (see <a href="#running-modules-on-host-machines">later
+    section</a>) for execution of its source scripts it is recommended
     that the subsequent module result should <em>not</em> require use
     of a host to produce its outputs. This should improve the
-    portability and &lsquo;weight&rsquo; of the result archive.</p>
+    portability and &lsquo;weight&rsquo; of the result archive. On the
+    other hand, if the code authored by the glue system to represent
+    the result does have significant system requirements, it may make
+    sense to specify a (different) host for the module result.</p>
 
     <h3>Implementation in Conduit v0.5</h3>
 
@@ -226,6 +245,11 @@ recoveredMod1 <- importModule(tarfile = modExport1, name = "recoveredMod1")
 class(recoveredMod1)
 end.rcode-->
 
+    <p>The module result produced by running this recovered module
+    within the same glue system should be indentical to the original
+    module result, i.e. module results should &lsquo;round
+    trip.&rsquo;</p>
+
     <p>The result of running a pipeline is
     a <code>pipelineResult</code> object:</p>
 
@@ -250,7 +274,9 @@ end.rcode-->
     <p>The resulting tar
     archive&mdash;<a href="pipeline1.tar.gz">pipeline1.tar.gz</a>&mdash;contains
     the pipeline result XML file (pipeline.xml) and the files it
-    requires to reproduce the pipeline outputs:</p>
+    requires to reproduce the pipeline outputs, including the module
+    XML files required to produce the result of each module in the
+    pipeline:</p>
 
 <!--begin.rcode pplTarContents, echo=FALSE
 out <- tempfile("out")
@@ -265,18 +291,102 @@ end.rcode-->
 recoveredPpl1 <- importPipeline(tarfile = pplExport1, name = "recoveredPpl1")
 class(recoveredPpl1)
 end.rcode-->
-      
-    <h2 id="running-modules-on-host-machines">Running modules on host
-    machines</h2>
 
-    <p>Module hosts were introduced in OpenAPI v0.3 to provide an
-    execution environment for a module which promises to meet the
-    module source script(s)' system and version requirements
+    <p>Running the pipeline recovered from a pipeline result archive
+    should, within the same glue system, also produce a pipeline
+    result identical to the original pipeline result&mdash;pipeline
+    results, like module results, &lsquo;round trip.&rsquo;</p>
+      
+    <h2 id="running-modules-on-host-machines">Running modules on host machines</h2>
+
+    <!-- begin shoehorn. TODO(anhinton): resolve below -->
+
+    <p>OpenAPI version 0.3 introduced module hosts to help solve the
+    &lsquo;dependency problem&rsquo;
     (<a href="https://anhinton.github.io/report-openapiv0.3/report.html#c14-module-host">'Module
-    host' in OpenAPI version 0.3</a>). A module host was a machine
-    which could be accessed using the SSH protocol. The module host
-    was specified using a host attribute, as in the following
-    example:</p>
+    host' in OpenAPI version 0.3</a>). In this section we will
+    describe the dependency problem, and how module hosts offer a
+    solution to this problem. We then describe changes to host modules
+    in OpenAPI version 0.5. We conclude his section with a
+    demonstration of two types of module hosts&mdash;docker and
+    vagrant&mdash;and examples of how support for these host types has
+    been implemented in Conduit v0.5.</p>
+
+    <h3>What is the dependency problem?</h3>
+
+    <p>The dependency problem is the problem of ensuring an OpenAPI
+    glue system can meet the hardware and software requirements of any
+    given module's source scripts. There are three broad variations on
+    the dependency problem: meeting the requirements of a module
+    source script; providing a module's specified language; providing
+    an environment for the glue system software itself.</p>
+
+    <ol>
+      <li>
+	<h4>Source script dependencies</h4>
+
+	<p>Within a module's source scripts it is reasonable to expect
+	that a script author will want to make use of installable
+	libraries and packages within the platform. For example, an R
+	script author may make use of
+	the <a href="http://cran.stat.auckland.ac.nz/web/packages/gridSVG/index.html"><code>gridSVG</code></a>
+	package from the Comprehensive R Archive Network
+	(<a href="http://cran.r-project.org/mirrors.html">CRAN</a>). Executing
+	a module with &ldquo;<code>library(gridSVG)</code>&rdquo; in
+	the author's source script would fail if the glue system does
+	not have access an R session in which the <code>gridSVG</code>
+	package available. Similarly a Python script author might call
+	&ldquo;<code>from TwitterAPI import TwitterAPI</code>&rdquo;,
+	which would fail if the glue system could not access a Python
+	session in which
+	the <a href="https://pypi.python.org/pypi/TwitterAPI/2.3.1"><code>TwitterAPI</code></a>
+	package from the <a href="https://pypi.python.org/pypi">Python
+	Package Index</a> is available.</p></li>
+
+      <li>
+	<h4>Platform dependencies</h4>
+
+	<p>A module author may require a specific version of a
+	software platform to be available for her module scripts. For
+	example, a module mighty specify that it requires
+	&ldquo;<code>R &gt;= 3.0</code>&rdquo;.  It would be desirable
+	for a glue system to indicate if it is unable to meet this
+	requirement.</p>
+
+	<p>Conceivably a module could have even more specific platform
+	requirements, including fine-grained details about the system
+	on which the platform software is run. How might a glue system
+	provide &quot;<code>R &gt;= 3.1</code>&rdquo;, alongside
+	&ldquo;<code>java &gt;= 1.7</code>&rdquo;, on an
+	&ldquo;<code>Ubuntu 14.04 64-bit</code>&rdquo; system?<p></li>
+      
+      <li>
+	<h4>Glue system dependencies</h4>
+
+	<p>A glue system itself might require a particular software or
+	hardware environment to run. For
+	example, <a href="https://github.com/anhinton/conduit"><code>conduit</code></a>,
+	a glue system distributed as an R package, was created to run
+	in &ldquo;<code>R &gt;= 3</code>&rdquo; on Ubuntu
+	14.04. Though it can probably be installed in R on Windows, it
+	almost certainly will not work, as it makes assumptions about
+	system paths which are only satisfied in Linux.<p></li>
+    </ol>
+
+    <h3>Module hosts in OpenAPI v0.5</h3>
+
+    <p>Module hosts were introduced in OpenAPI v0.3 to solve the first
+    variation of the dependency problem: meeting module source script
+    dependencies. A module host is a real or virtual computer,
+    accessible by the glue system, which meets the software and system
+    dependencies of a module's source script&mdash;the glue system
+    executes the a module's source scripts on the host machine instead
+    of executing the code locally. In this section we describe the
+    changes to the specification of module hosts in OpenAPI v0.5.</p>
+
+    <p>In OpenAPI v0.3 a module host was a machine which could be
+    accessed using the SSH protocol. The module host was specified
+    using a host attribute, as in the following example:</p>
 
     <pre><code>&lt;module language="R" host="conduit@openapi.org:2222"&gt;
   ...
@@ -292,12 +402,21 @@ end.rcode-->
     <p>In OpenAPI version 0.5 the module host attribute has been
     replaced with <code>host</code> elements. A <code>host</code>
     element can contain elements describing how the glue system can
-    connect to a variety of host machine types. OpenAPI v0.5
-    specifies <code>docker</code> and <code>vagrant</code> host
-    elements for a glue system to connect to a host on
+    connect to a variety of host machine types. A glue system can
+    support any <code>host</code> type specified in the architecture
+    specification. OpenAPI v0.5 specifies <code>docker</code>
+    and <code>vagrant</code> host elements for a glue system to
+    connect to a host on
     a <a href="https://www.docker.com/">Docker</a> container and on
     a <a href="https://www.vagrantup.com/">Vagrant</a> machine,
-    respectively.</p>
+    respectively. An OpenAPI glue system is responsible for
+    provisioning a module <code>host</code> machine with the resources
+    required to execute a module's source scripts, and for retrieving
+    the outputs resulting from executing a module. Though provisioning
+    and retrieving may differ between host types, Conduit v0.5
+    provides the functions <code>prepareModuleHost()</code>
+    and <code>retrieveModuleHost()</code> to the glue system author
+    for incorporating new host types.</p>
 
     <p>The following sections provide details for specifying a host
     for module execution using Docker and Vagrant.</p>
@@ -330,12 +449,15 @@ end.rcode-->
     in <a href="https://github.com/anhinton/conduit/releases/tag/v0.5">Conduit
     v0.5</a>. When the &lsquo;guestdir&rsquo; is not provided, as in
     the above example, Conduit will execute in the
-    &ldquo;/home/conduit&rdquo; directory on the Docker container. The
-    Conduit package requires that Docker be installed on the system,
-    and that the user running the R session is a member of the
-    &lsquo;docker&rsquo; group. Conduit 0.5 was tested using Docker
-    version 1.11.1. Adding a user to the &lsquo;docker&rsquo; group in
-    Ubuntu Linux is described in
+    &ldquo;/home/conduit&rdquo; directory on the Docker
+    container. Provisioning and retrieving of module input and output
+    objects is simplified for <code>docker</code> hosts in Conduit
+    v0.5 by syncing the glue system's module output directory directly
+    with the Docker container. The Conduit package requires that
+    Docker be installed on the system, and that the user running the R
+    session is a member of the &lsquo;docker&rsquo; group. Conduit 0.5
+    was tested using Docker version 1.11.1. Adding a user to the
+    &lsquo;docker&rsquo; group in Ubuntu Linux is described in
     the <a href="https://docs.docker.com/engine/installation/linux/ubuntulinux/#create-a-docker-group">Docker
     documentation</a>.</p>
 
@@ -351,12 +473,12 @@ end.rcode-->
     &lsquo;guestdir&rsquo; and &lsquo;hostdir&rsquo;. The
     &lsquo;vagrantfile&rsquo; attribute requires a file path to
     a <a href="https://www.vagrantup.com/docs/vagrantfile/">Vagrantfile</a>
-    on the local system. The &lsquo;hostdir&rsquo; attribute let's the
-    module author name a directory on the machine running a glue
-    system (host system) which is to
+    on the local system. The &lsquo;hostdir&rsquo; attribute allows
+    the module author to name a directory on the machine running a
+    glue system (host system) which is to
     be <a href="https://www.vagrantup.com/docs/synced-folders/">synced
     with the Vagrant machine</a>. The &lsquo;guestdir&rsquo; attribute
-    let's the module author specify the directory on the Vagrant
+    allows the module author to specify the directory on the Vagrant
     machine (guest machine) to be synced with
     &lsquo;hostdir&rsquo;. The following demonstrates how a module
     author specifies a Vagrant host machine:</p>
@@ -381,8 +503,15 @@ end.rcode-->
     the specified &lsquo;vagrantfile&rsquo; as the synced folder. If
     the author does not specify a &lsquo;guestdir&rsquo; Conduit will
     use the &ldquo;/vagrant&rdquo; directory as the target for the
-    synced folder on the Vagrant machine (guest machine). Conduit will
-    use these defaults for the Vagrant host XML describe above.</p>
+    synced folder on the Vagrant machine (guest machine). Conduit v0.5
+    prepares the host machine by provisioning the
+    &lsquo;hostdir&rsquo;, and thus the &lsquo;guestdir&rsquo;, with
+    the resources required to execute the module. After executing the
+    module in &lsquo;guestdir&rsquo; on the Vagrant machine, Conduit
+    returns the subsequent outputs to the glue system's own module
+    output directory. Conduit will use the defaults for
+    &lsquo;hostdir&rsquo;, and &lsquo;guestdir&rsquo; in the Vagrant
+    host XML described above.</p>
 
     <p>The Conduit package requires that Vagrant be installed on the
     system, and that the file named in &lsquo;vagrantfile&rsquo;
