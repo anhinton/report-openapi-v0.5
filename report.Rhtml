@@ -28,10 +28,11 @@
 	  of Auckland</p>
       </div>
 
-      <p class="date">4 May 2016</p>
+      <p class="date">10 May 2016</p>
     </div>
 
 <!-- begin.rcode setup, echo=FALSE, message=FALSE
+opts_chunk$set(cache=TRUE)
 library(conduit)
 end.rcode-->
 
@@ -43,8 +44,8 @@ end.rcode-->
       of OpenAPI glue systems&mdash;software which can interpret and
       execute modules and pipelines
       (<a href="http://stattech.wordpress.fos.auckland.ac.nz/2015-01-introducing-openapi/">Introducing
-      OpenAPI</a>). This report describes the changes to the OpenAPI
-      architecture implemented in version 0.5.</p>
+      OpenAPI</a>). In this report we describe the changes to the
+      OpenAPI architecture implemented in version 0.5.</p>
 
       <p>Version 0.3 of OpenAPI introduced a host attribute to the
       module specification as a method for guaranteeing that module
@@ -299,8 +300,6 @@ end.rcode-->
       
     <h2 id="running-modules-on-host-machines">Running modules on host machines</h2>
 
-    <!-- begin shoehorn. TODO(anhinton): resolve below -->
-
     <p>OpenAPI version 0.3 introduced module hosts to help solve the
     &lsquo;dependency problem&rsquo;
     (<a href="https://anhinton.github.io/report-openapiv0.3/report.html#c14-module-host">'Module
@@ -461,8 +460,43 @@ end.rcode-->
     the <a href="https://docs.docker.com/engine/installation/linux/ubuntulinux/#create-a-docker-group">Docker
     documentation</a>.</p>
 
-    <p><strong>TODO(anhinton): provide some Conduit code demoing
-    this?</strong></p>
+    <p>The following example demonstrates how a module with
+    a <code>docker</code> module host can be executed in Conduit
+    v0.5. The module
+    file <a href="dockerModule.xml">dockerModule.xml</a>
+    contains <code>host</code> XML specifying that the module source
+    scripts should be executed on a Docker container made from the
+    &ldquo;rocker/r-base&rdquo; image:</p>
+
+    <pre><code>&lt;host&gt;
+  &lt;docker image="rocker/r-base"/&gt;
+&lt;/host&gt;</code></pre>
+
+    <p>The module is read into Conduit in the usual fashion:</p>
+
+<!-- begin.rcode loadDockerModule
+dockerModule <- loadModule(name = "dockerModule", ref = "dockerModule.xml")
+end.rcode-->
+
+    <p>Then the module is executed in the usual fashion:</p>
+
+<!--begin.rcode runDockerModule
+result1 <- runModule(module = dockerModule)
+end.rcode-->
+
+    <p>If the user running Conduit is in the &lsquo;docker&rsquo;
+    group, and Docker is installed, the module source scripts will be
+    executed on the Docker container. This will produce
+    a <code>moduleResult</code> object which can be exported to a
+    module result archive.</p>
+
+<!--begin.rcode exportDockerModule
+export1 <- export(result1)
+end.rcode-->
+
+    <p>The module result archive from this example is available for
+    inspection
+    at <a href="dockerModule.tar.gz">dockerModule.tar.gz</a>.</p>
 
     <h3>Vagrant host machines</h3>
 
@@ -520,12 +554,88 @@ end.rcode-->
     will not start a stopped Vagrant machine. Conduit 0.5 was tested
     using Vagrant version 1.8.1.</p>
 
-    <p><strong>TODO(anhinton): provide some Conduit code demoing
-    this?</strong></p>
+    <p>The following example demonstrates how a module with
+    a <code>vagrant</code> module host can be executed in Conduit
+    v0.5. The module
+    file <a href="vagrantModule.xml">vagrantModule.xml</a>
+    contains <code>host</code> XML specifying that the module source
+    scripts should be executed on a Vagrant machine described in a
+    Vagrantfile found on the local machine at
+    &ldquo;~/vagrant/vagrant-conduit/Vagrantfile&rdquo;, with this
+    machine having already been started. The Vagrantfile used in this
+    example, and its provisioning scripts, can
+    be <a href="https://github.com/anhinton/vagrant-conduit/releases/tag/v0.5">downloaded
+    from github</a>.</p>
+
+    <pre><code>&lt;host&gt;
+  &lt;vagrant vagrantfile="~/vagrant/vagrant-conduit/Vagrantfile"/&gt;
+&lt;/host&gt;</code></pre>
+
+    <p>The module is read into Conduit in the usual fashion:</p>
+
+<!-- begin.rcode loadVagrantModule
+vagrantModule <- loadModule(name = "vagrantModule", ref = "vagrantModule.xml")
+end.rcode-->
+
+    <p>Then the module is executed in the usual fashion:</p>
+
+<!--begin.rcode runVagrantModule
+result2 <- runModule(module = vagrantModule)
+end.rcode-->
+
+    <p>If: (a) Vagrant is installed on the machine running Conduit;
+    (b) there is a Vagrantfile at
+    &ldquo;~/vagrant/vagrant-conduit/Vagrantfile&rdquo;; and (c) this
+    Vagrant machine has been started, the module source scripts will
+    be executed in the Vagrant machine. This will produce
+    a <code>moduleResult</code> object which can be exported to a
+    module result archive.</p>
+
+<!--begin.rcode exportVagrantModule
+export2 <- export(result2)
+end.rcode-->
+
+    <p>The module result archive from this example is available for
+    inspection
+    at <a href="vagrantModule.tar.gz">vagrantModule.tar.gz</a>.</p>
 
     <h2>Discussion</h2>
 
-    <p><strong>TODO(anhinton): discuss something</strong></p>
+    <p>In this report we have described the introduction of persistent
+    result archives for modules and pipelines in OpenAPI version
+    0.5. These result archives allow for the outputs produced by an
+    OpenAPI module or pipeline to be preserved and recovered at a
+    later time, or even in another glue system or on another
+    machine. Within a glue system this provides a mechanism for
+    caching module results, preventing a glue system from having to
+    execute a computationally- or time-intensive task multiple
+    times. It also provides a mechanism for sharing these results with
+    other users. A pipeline result can serve as a simplified method
+    for a user to incorporate results from modules which may not be
+    practical to execute on her local machine, while still employing
+    module and pipeline XML. A module result archive is something like
+    a self-contained executable mini-program, producing output results
+    on any machine with a suitable glue system environment.</p>
+
+    <p>We have also described how module host machines can help to
+    solve an aspect of the dependency problem, by guaranteeing a glue
+    system can meet the system requirements of a module's source
+    scripts. The changes to module <code>host</code> elements
+    implemented in OpenAPI v0.5 provide more nuanced access to Docker
+    and Vagrant virtual computer environments, allowing a module
+    author to take advantage of each of these systems. The OpenAPI
+    v0.5 specification also provides a path for adding other host
+    types in the future. The authors believe that a more considered
+    implementation of an <code>ssh</code> host type is desireable in
+    future developments of OpenAPI.</p>
+
+    <p>Two technical reports demonstrate how <code>docker</code> hosts
+    can be used in authoring OpenAPI
+    pipelines. <a href="http://stattech.wordpress.fos.auckland.ac.nz/2016-05-an-improved-pipeline-for-cpi-data/">An
+    Improved Pipeline for CPI Data</a> (2016)
+    and <a href="http://stattech.wordpress.fos.auckland.ac.nz/2016-06-an-openapi-pipeline-for-nz-crime-data/">An
+    OpenAPI Pipeline for NZ Crime Data</a> (2016), both by Paul
+    Murrell, are written using Conudit v0.5.</p>
 
     <h2>Technical requirements</h2>
 
@@ -533,10 +643,12 @@ end.rcode-->
       <li>The changes to OpenAPI version 0.5 described in this report
       have been implemented in version 0.5 of
       the <a href="https://github.com/anhinton/conduit/releases/tag/v0.5">Conduit</a>
-      package, a prototype OpenAPI glue system implemented in R.</li>
-      <li>Development and testing of Conduit v0.5 was done
-      in <a href="http://www.ubuntu.com/">Ubuntu 16.04 64-bit</a>
-      using <a href="https://www.r-project.org/">R version
+      package (Hinton &amp; Murrell, 2016), a prototype OpenAPI glue
+      system implemented in R.</li>
+      <li>Development and testing of Conduit v0.5, and the execution
+      of the examples in this report, were done on
+      an <a href="http://www.ubuntu.com/">Ubuntu 16.04 64-bit</a>
+      machine using <a href="https://www.r-project.org/">R version
       3.2.5</a>.</li>
       <li>Docker module hosts were tested in Conduit v0.5
       using <a href="https://www.docker.com/">Docker Engine
@@ -544,22 +656,40 @@ end.rcode-->
       <li>Vagrant module hosts were tested in Conduit v0.5
       using <a href="https://vagrantup.com/">Vagrant v1.8.1</a>
       and <a href="https://www.virtualbox.org/">VirtualBox
-      v5.0.18</a>.</li>
+      v5.0.20</a>.</li>
+      <li>The example of running a module with a <code>vagrant</code>
+      host type uses a Vagrant machine built from the Vagrantfile and
+      provisiong scripts found in version 0.5 of
+      the <a href="https://github.com/anhinton/vagrant-conduit/releases/tag/v0.5">vagrant-conduit
+      repository on github</a>.
     </ul>
 
     <h2>Resources</h2>
 
     <ul>
       <li><a href="http://stattech.wordpress.fos.auckland.ac.nz/2015-01-introducing-openapi/">Introducing
-      OpenAPI</a> describes the original conception and design of the
-      OpenAPI architecture.</li>
+      OpenAPI</a> (Hinton &amp; Murrell, 2015) describes the original
+      conception and design of the OpenAPI architecture.</li>
       <li>Several design changes and new features in OpenAPI are
       documented
       in <a href="http://stattech.wordpress.fos.auckland.ac.nz/2016-01-openapi-version-0-3/">OpenAPI
-      version 0.3</a>.</li>
+      version 0.3</a> (Hinton &amp; Murrell, 2016).</li>
       <li>XML schema for version 0.5 of OpenAPI
       are <a href="https://github.com/anhinton/openapiValidation/releases/tag/v0.5">available
       on Github</a>.</li>
+      <li>The <code>docker</code> host example in this report uses the
+      module file <a href="dockerModule.xml">dockerModule.xml</a>.</li>
+      <li>The <code>vagrant</code> host example in this report uses the
+      module file <a href="vagrantModule.xml">vagrantModule.xml</a>.</li>
+      <li><a href="http://stattech.wordpress.fos.auckland.ac.nz/2016-05-an-improved-pipeline-for-cpi-data/">
+	  An Improved Pipeline for CPI Data</a> (Murrell, 2016) uses
+	  Conduit v0.5 and the <code>docker</code> host type to build
+	  a user-friendly web front-end for running an OpenAPI
+	  pipeline.</li>
+      <li><a href="http://stattech.wordpress.fos.auckland.ac.nz/2016-06-an-openapi-pipeline-for-nz-crime-data/">
+	  An OpenAPI Pipeline for NZ Crime Data</a> (Murrell, 2016)
+	  uses Conduit v0.5 and the <code>docker</code> host type to
+	  build a pipeline to explore NZ Crime data.</li>
       <li>This report was produced using
       the <a href="http://yihui.name/knitr/">knitr</a> package in
       R. The source document is available
@@ -570,7 +700,7 @@ end.rcode-->
 
     <div class="footer">
       <p>
-	<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png"></a><br><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">OpenAPI  0.5</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Ashley Noel Hinton</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+	<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png"></a><br><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">OpenAPI  0.5</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Ashley Noel Hinton and Paul Murrell</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
       </p>
     </div>
     

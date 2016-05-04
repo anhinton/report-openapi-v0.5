@@ -31,3 +31,13 @@ recoveredPpl1 <- importPipeline(tarfile = pplExport1, name = "recoveredPpl1")
 class(recoveredPpl1)
 
 ## dockerHost example
+dockerModule <- loadModule(name = "dockerModule", ref = "dockerModule.xml")
+result1 <- runModule(module = dockerModule)
+export1 <- export(result1)
+
+## vagrantHost example
+vagrantModule <- loadModule(name = "vagrantModule", ref = "vagrantModule.xml")
+result2 <- runModule(module = vagrantModule)
+export2 <- export(result2)
+
+
