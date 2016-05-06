@@ -116,8 +116,8 @@
       host types supported. This report describes
       how <code>vagrant</code> and <code>docker</code> hosts are
       supported in version 0.5. Version 0.5 of OpenAPI also introduces
-      a persistent result format for capturing the results of
-      executing modules and pipelines.</p>
+      a persistent result format for recording/storing/saving and
+      sharing the results of executing modules and pipelines.</p>
 
       <p>The improvements described in this report have been
       incorporated
@@ -205,7 +205,7 @@
 &lt;/output&gt;</code></pre>
 
     <p>The file produced by this module output could be included in
-    the module result archive alongside to module result XML file. The
+    the module result archive alongside the module result XML file. The
     module result XML could produce this file output by including the
     output XML above.</p>
 
@@ -328,7 +328,7 @@
 </pre></div>
 </div></div>
 
-    <p>A <code>moduleResult</code> object can be exported to a
+    <p>A <code>pipelineResult</code> object can be exported to a
     pipeline result tar archive using the <code>export()</code>
     function:</p>
 
@@ -479,14 +479,10 @@
     connect to a host on
     a <a href="https://www.docker.com/">Docker</a> container and on
     a <a href="https://www.vagrantup.com/">Vagrant</a> machine,
-    respectively. An OpenAPI glue system is responsible for
-    provisioning a module <code>host</code> machine with the resources
-    required to execute a module's source scripts, and for retrieving
-    the outputs resulting from executing a module. Though provisioning
-    and retrieving may differ between host types, Conduit v0.5
-    provides the functions <code>prepareModuleHost()</code>
-    and <code>retrieveModuleHost()</code> to the glue system author
-    for incorporating new host types.</p>
+    respectively. An OpenAPI glue system is responsible for preparing
+    the resources required for a module <code>host</code> machine to
+    execute a module's source scripts, and for retrieving the outputs
+    resulting from executing a module.</p>
 
     <p>The following sections provide details for specifying a host
     for module execution using Docker and Vagrant.</p>
@@ -520,7 +516,7 @@
     v0.5</a>. When the &lsquo;guestdir&rsquo; is not provided, as in
     the above example, Conduit will execute in the
     &ldquo;/home/conduit&rdquo; directory on the Docker
-    container. Provisioning and retrieving of module input and output
+    container. Preparing and retrieving of module input and output
     objects is simplified for <code>docker</code> hosts in Conduit
     v0.5 by syncing the glue system's module output directory directly
     with the Docker container. The Conduit package requires that
@@ -609,12 +605,12 @@
     the author does not specify a &lsquo;guestdir&rsquo; Conduit will
     use the &ldquo;/vagrant&rdquo; directory as the target for the
     synced folder on the Vagrant machine (guest machine). Conduit v0.5
-    prepares the host machine by provisioning the
-    &lsquo;hostdir&rsquo;, and thus the &lsquo;guestdir&rsquo;, with
-    the resources required to execute the module. After executing the
-    module in &lsquo;guestdir&rsquo; on the Vagrant machine, Conduit
-    returns the subsequent outputs to the glue system's own module
-    output directory. Conduit will use the defaults for
+    prepares the host machine by preparing the &lsquo;hostdir&rsquo;,
+    and thus the &lsquo;guestdir&rsquo;, with the resources required
+    to execute the module. After executing the module in
+    &lsquo;guestdir&rsquo; on the Vagrant machine, Conduit returns the
+    subsequent outputs to the glue system's own module output
+    directory. Conduit will use the defaults for
     &lsquo;hostdir&rsquo;, and &lsquo;guestdir&rsquo; in the Vagrant
     host XML described above.</p>
 
@@ -684,9 +680,7 @@
     other users. A pipeline result can serve as a simplified method
     for a user to incorporate results from modules which may not be
     practical to execute on her local machine, while still employing
-    module and pipeline XML. A module result archive is something like
-    a self-contained executable mini-program, producing output results
-    on any machine with a suitable glue system environment.</p>
+    module and pipeline XML.</p>
 
     <p>We have also described how module host machines can help to
     solve an aspect of the dependency problem, by guaranteeing a glue
@@ -694,19 +688,22 @@
     scripts. The changes to module <code>host</code> elements
     implemented in OpenAPI v0.5 provide more nuanced access to Docker
     and Vagrant virtual computer environments, allowing a module
-    author to take advantage of each of these systems. The OpenAPI
-    v0.5 specification also provides a path for adding other host
-    types in the future. The authors believe that a more considered
-    implementation of an <code>ssh</code> host type is desireable in
-    future developments of OpenAPI.</p>
+    author to take advantage of each of these systems. Via the
+    mechanism a module result archive is something like a
+    self-contained executable mini-program, producing output results
+    on any machine with a suitable glue system environment. The
+    OpenAPI v0.5 specification also provides a path for adding other
+    host types in the future. The authors believe that a more
+    considered implementation of an <code>ssh</code> host type is
+    desireable in future developments of OpenAPI.</p>
 
     <p>Two technical reports demonstrate how <code>docker</code> hosts
     can be used in authoring OpenAPI
     pipelines. <a href="http://stattech.wordpress.fos.auckland.ac.nz/2016-05-an-improved-pipeline-for-cpi-data/">An
     Improved Pipeline for CPI Data</a> (2016)
     and <a href="http://stattech.wordpress.fos.auckland.ac.nz/2016-06-an-openapi-pipeline-for-nz-crime-data/">An
-    OpenAPI Pipeline for NZ Crime Data</a> (2016), both by Paul
-    Murrell, are written using Conudit v0.5.</p>
+    OpenAPI Pipeline for NZ Crime Data</a> (2016) are written using
+    Conudit v0.5.</p>
 
     <h2>Technical requirements</h2>
 
