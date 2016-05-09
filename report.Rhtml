@@ -57,8 +57,8 @@ end.rcode-->
       host types supported. This report describes
       how <code>vagrant</code> and <code>docker</code> hosts are
       supported in version 0.5. Version 0.5 of OpenAPI also introduces
-      a persistent result format for recording/storing/saving and
-      sharing the results of executing modules and pipelines.</p>
+      a persistent result format for saving and sharing the results of
+      executing modules and pipelines.</p>
 
       <p>The improvements described in this report have been
       incorporated
@@ -617,7 +617,7 @@ end.rcode-->
     scripts. The changes to module <code>host</code> elements
     implemented in OpenAPI v0.5 provide more nuanced access to Docker
     and Vagrant virtual computer environments, allowing a module
-    author to take advantage of each of these systems. Via the
+    author to take advantage of each of these systems. Via this
     mechanism a module result archive is something like a
     self-contained executable mini-program, producing output results
     on any machine with a suitable glue system environment. The
